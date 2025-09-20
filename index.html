@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>백년청사: 슬라이드 퍼즐</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  html,body {height:100%; margin:0; background:#fff; font-family:'Jua', sans-serif;}
+  .slide { display:none; width:100vw; height:100vh; position:relative; overflow:hidden; }
+  .slide.active { display:block; }
+
+  /* 퍼즐 보드 */
+  #board {
+    position:absolute; top:115px; left:1601px; width:805px; height:1198px;
+    display:grid;
+    background:transparent;
+    box-sizing:border-box;
+  }
+  .tile {
+    box-sizing:border-box;
+    border:0;
+    background-repeat:no-repeat;
+    background-size:cover;
+    cursor:pointer;
+  }
+  .tile.empty { background:none; cursor:default; }
+
+  /* 말풍선 */
+  #bubble {
+    position:absolute; top:724px; left:778px;
+    width:468px; height:357px;
+    font-size:60px;
+    font-weight:600;
+    display:flex; justify-content:center; align-items:center;
+    text-align:center; padding:10px;
+    line-height:1.05;
+    pointer-events:none;
+  }
+
+  .btn-area {
+    position:absolute;
+    z-index:9999;
+    cursor:pointer;
+    background:transparent;
+  }
+</style>
+</head>
+<body>
+
+<!-- 1번 슬라이드 -->
+<div id="slide1" class="slide active">
+  <div style="position:relative; display:inline-block;">
+    <img src="1.png" width="2560" height="1440" alt="">
+    <div onclick="showSlide(2)"
+         style="position:absolute; top:1034px; left:2162px; width:200px; height:200px; cursor:pointer; opacity:0;"></div>
+  </div>
+</div>
+
+<!-- 2번 슬라이드 -->
+<div id="slide2" class="slide">
+  <img src="2.png" width="2560" height="1440" alt="">
+</div>
+
+<!-- 3번 슬라이드 -->
+<div id="slide3" class="slide">
+  <div style="position:relative; display:inline-block;">
+    <img src="3.png" width="2560" height="1440" alt="">
+    <div onclick="showSlide(4)"
+         style="position:absolute; top:1034px; left:2162px; width:200px; height:200px; cursor:pointer; opacity:0;"></div>
+  </div>
+</div>
+
+<!-- 4번 선택 화면 -->
+<div id="slide4" class="slide">
+  <div style="position:relative; display:inline-block;">
+    <img src="4.png" width="2560" height="1440" alt="선택화면">
+
+    <img src="2024_부산 임시수도 정부청사 (10).jpg"
+         style="position:absolute; top:381px; left:243px; width:554px; height:752px; object-fit:cover; cursor:pointer;"
+         onclick="startPuzzle('day')" alt="낮 사진">
+
+    <img src="2024_부산 임시수도 정부청사 (14).jpg"
+         style="position:absolute; top:381px; left:1725px; width:554px; height:752px; object-fit:cover; cursor:pointer;"
+         onclick="startPuzzle('poster')" alt="포스터 사진">
+  </div>
+</div>
+
+<!-- 5번 퍼즐 화면 -->
+<div id="slide5" class="slide">
+  <div style="position:relative; display:inline-block;">
+    <img src="5-1.png" width="2560" height="1440" alt="퍼즐화면배경">
+    <div id="bubble">섞기를 누르고 퍼즐을 시작하자🧩</div>
+    <div id="board" aria-label="퍼즐 보드"></div>
+    <div class="btn-area" onclick="onClickShuffle()" style="top:441px; left:277px; width:360px; height:150px;"></div>
+    <div class="btn-area" onclick="onClickReset()" style="top:644px; left:277px; width:360px; height:150px;"></div>
+  </div>
+</div>
+
+<!-- 6번 고마워 화면 -->
+<div id="slide6" class="slide">
+  <img src="6.png" width="100%" height="100%" style="object-fit:contain;" alt="고마워">
+</div>
+
+<script>
+/* ---------------- 슬라이드 제어 ---------------- */
+let currentSlide = 1;
+function showSlide(n){
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const s = document.getElementById('slide' + n);
+  if (!s) return;
+  s.classList.add('active');
+  currentSlide = n;
+  if (n === 2) setTimeout(()=> showSlide(3), 3000);
+}
+
+/* ---------------- 퍼즐 로직 ---------------- */
+const N = 3;
+let state = [];
+let imgUrl = "";
+let intervalMsg = null;
+
+function startPuzzle(type){
+  if (type === 'day') imgUrl = "2024_부산 임시수도 정부청사 (10).jpg";
+  else imgUrl = "2024_부산 임시수도 정부청사 (14).jpg";
+  initPuzzle();
+  showSlide(5);
+}
+
+function initPuzzle(){
+  state = Array.from({length: N*N}, (_,i) => (i === N*N - 1 ? 0 : i+1));
+  const b = document.getElementById('bubble');
+  b.textContent = "섞기를 누르고 퍼즐을 시작하자🧩~!";
+  if (intervalMsg) clearInterval(intervalMsg);
+  let toggle = false;
+  intervalMsg = setInterval(()=>{
+    b.textContent = toggle ? "화이팅! 할 수 있어!" : "힘들다면 '정답'을 눌러서 처음부터 시작할 수 있어";
+    toggle = !toggle;
+  }, 30000);
+  render();
+}
+
+function render(){
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  const boardW = board.clientWidth || 805;
+  const boardH = board.clientHeight || 1198;
+  const pieceW = Math.floor(boardW / N);
+  const pieceH = Math.floor(boardH / N);
+  board.style.gridTemplateColumns = `repeat(${N}, ${pieceW}px)`;
+  board.style.gridTemplateRows = `repeat(${N}, ${pieceH}px)`;
+
+  for (let i = 0; i < N*N; i++){
+    const v = state[i];
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.style.width = pieceW + 'px';
+    tile.style.height = pieceH + 'px';
+
+    if (v === 0) {
+      tile.classList.add('empty');
+    } else {
+      const r = Math.floor((v-1) / N), c = (v-1) % N;
+      tile.style.backgroundImage = `url("${imgUrl}")`;
+      tile.style.backgroundSize = `${boardW}px ${boardH}px`;
+      tile.style.backgroundPosition = `-${c * pieceW}px -${r * pieceH}px`;
+      tile.onclick = ()=> move(i);
+    }
+    board.appendChild(tile);
+  }
+}
+
+function indexOfEmpty(){ return state.indexOf(0); }
+
+function move(i){
+  const empty = indexOfEmpty();
+  const er = Math.floor(empty / N), ec = empty % N;
+  const r = Math.floor(i / N), c = i % N;
+  if (Math.abs(er - r) + Math.abs(ec - c) === 1){
+    [state[i], state[empty]] = [state[empty], state[i]];
+    render();
+    if (checkWin()) win();
+  }
+}
+
+function shuffle(){
+  for (let k = 0; k < 200; k++){
+    const empty = indexOfEmpty();
+    const er = Math.floor(empty / N), ec = empty % N;
+    const neigh = [];
+    if (er > 0) neigh.push(empty - N);
+    if (er < N - 1) neigh.push(empty + N);
+    if (ec > 0) neigh.push(empty - 1);
+    if (ec < N - 1) neigh.push(empty + 1);
+    const choice = neigh[Math.floor(Math.random() * neigh.length)];
+    [state[empty], state[choice]] = [state[choice], state[empty]];
+  }
+  render();
+  document.getElementById('bubble').textContent = "섞기를 누르고 퍼즐을 시작하자🧩~!";
+}
+
+function reset(){
+  state = Array.from({length:N*N},(_,i)=> (i===N*N-1 ? 0 : i+1));
+  render();
+  document.getElementById('bubble').textContent = "다시 해보자!";
+}
+
+function checkWin(){
+  for (let i=0; i<state.length-1; i++){
+    if (state[i] !== i+1) return false;
+  }
+  return state[state.length-1] === 0; // 마지막 칸이 빈칸(0)인지 확인
+}
+
+function win(){
+  if (intervalMsg) { clearInterval(intervalMsg); intervalMsg = null; }
+  showSlide(6); // 고마워 화면
+  setTimeout(() => { showSlide(1); }, 10000); // 10초 뒤 처음으로
+}
+
+/* 버튼 이벤트 */
+function onClickShuffle(){ shuffle(); }
+function onClickReset(){ reset(); }
+
+/* 초기 화면 */
+showSlide(1);
+</script>
+</body>
+</html>
